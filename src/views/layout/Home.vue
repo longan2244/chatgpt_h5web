@@ -5,7 +5,7 @@
       <div class="title">GTP机器人</div>
       <div class="menu">:</div>
     </div>
-    <div class="top" v-if="false">
+    <!-- <div class="top" v-if="false">
       <div class="gpt avatar">
         <img src="./../../assets/image/g.svg" alt="">
       </div>
@@ -16,15 +16,24 @@
       <div class="info">
         历史
       </div>
-    </div>
+    </div> -->
     <div class="GPT">
       <div class="main" ref="main">
         <ul class="talk_list" style="top: 0px;" id="talk_list">
           <li :class="item.Isrobot ? 'left_word' : 'right_word'" v-for="(item, index) in MSGdata" :key="index">
 
-            <img :src="item.Isrobot ? './../../assets/image/g.svg' : './../../assets/image/me.svg'" />
+            <img :src="item.Isrobot ? './../../../public/image/g.svg' : './../../../public/image/me.svg'" />
 
-            <span>{{item.text}}</span>
+            <!-- <span style="white-space: pre-wrap">
+              {{ item.text }}
+            </span> -->
+
+            <!-- 正文输出 -->
+            <div class="entry-content">
+              <div class="content" v-highlight id="content" v-html="item.text">
+              </div>
+            </div>
+
           </li>
         </ul>
         <div class="drag_bar" style="display: none;">
@@ -40,14 +49,16 @@
   </div>
 </template>
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { gptAPI } from '@/api/index.js'
+import { crt } from '@/util/index.js'
+import { marked } from 'marked';
 
 let message = ref('') //自己的对话
-let messageId = ref('') //GPTid
+let messageId = '' //GPTid
 let MSGdata = reactive([{
   Isrobot: true,
-  text:'你tm好,我是ChatGPT,一个由OpenAI训练的大型语言模型。'
+  text: '你tm好,我是ChatGPT,一个由OpenAI训练的大型语言模型。'
 }]) //聊天数据
 let main = ref() //主界面 dom元素
 const send = async () => {
@@ -66,19 +77,32 @@ const send = async () => {
   let usermsg = message.value
   message.value = ''
   //发送数据
-  let { data: res } = await gptAPI({ message: usermsg, messageId })
+  let { data: res } = await gptAPI({
+    m: crts(usermsg)
+  })
   if (!res.code) {
-    return alert(res.msg)
+    return alert('错误')
   }
-  //保存本次ID
-  messageId = res.data.messageId
+  if (!res.data.result) { 
+    return alert('请求错误')
+  }
+    //保存本次ID
+    messageId = res.data.messageId
   MSGdata.splice(MSGdata.length - 1, 1)
   //添加GPT对话
   MSGdata.push({
-    text: res.data.result,
+    text: marked(res.data.result),
     Isrobot: true
   })
 
+}
+// 调用加密工具
+const crts = (message) => {
+  return crt({
+    messageId,
+    idx: 999,
+    message
+  })
 }
 //兼容安卓端-保证每次出现新消息在底部
 watch(MSGdata, () => {
@@ -87,6 +111,9 @@ watch(MSGdata, () => {
 }, {
   deep: true
 })
+
+
+
 </script>
 <style lang='less' scpoed>
 .home-container {
@@ -170,7 +197,7 @@ watch(MSGdata, () => {
   border-radius: 50%;
 }
 
-.talk_list .left_word span {
+.talk_list .left_word .content {
   float: left;
   background: rgba(241, 240, 243, 1);
   padding: 10px 15px;
@@ -192,7 +219,7 @@ watch(MSGdata, () => {
 
 }
 
-.talk_list .right_word span {
+.talk_list .right_word .content {
   float: right;
   background: rgba(139, 92, 255, 1);
   padding: 10px 15px;
@@ -267,5 +294,17 @@ watch(MSGdata, () => {
   outline: none;
   color: #fff;
   cursor: pointer;
+}
+
+
+.content pre {
+  border-radius: 8px;
+  overflow: hidden;
+
+  code {
+    padding: 24px 16px 16px 16px;
+
+  }
+
 }
 </style>

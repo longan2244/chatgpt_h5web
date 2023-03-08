@@ -4,6 +4,9 @@ export const gptAPI = (data) => {
   return ajax({
     method: 'post',
     url: '/api/chatgpt',
-    data
+    data,
+    maxBodyLength: Infinity,
   })
 }
+
+
