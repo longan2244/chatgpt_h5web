@@ -53,14 +53,16 @@ import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { gptAPI } from '@/api/index.js'
 import { crt } from '@/util/index.js'
 import { marked } from 'marked';
-
+let decoder = new TextDecoder() //构建文本解析器
+let flage = true //全局flage
 let message = ref('') //自己的对话
-let messageId = '' //GPTid
+let messageId = ref('') //GPTid
 let MSGdata = reactive([{
   Isrobot: true,
-  text: '你tm好,我是ChatGPT,一个由OpenAI训练的大型语言模型。'
+  text: '你好v3.0,我是ChatGPT,一个由OpenAI训练的大型语言模型。'
 }]) //聊天数据
 let main = ref() //主界面 dom元素
+//发送GTP数据之前
 const send = async () => {
   if (!message.value) {
     return alert('请输入内容')
@@ -76,37 +78,55 @@ const send = async () => {
   //清空聊天框
   let usermsg = message.value
   message.value = ''
-  //发送数据
-  let { data: res } = await gptAPI({
-    m: crts(usermsg)
-  })
-  if (!res.code) {
-    return alert('错误')
-  }
-  if (!res.data.result) { 
-    return alert('请求错误')
-  }
-    //保存本次ID
-    messageId = res.data.messageId
-  MSGdata.splice(MSGdata.length - 1, 1)
-  //添加GPT对话
-  MSGdata.push({
-    text: marked(res.data.result),
-    Isrobot: true
-  })
-
-}
-// 调用加密工具
-const crts = (message) => {
-  return crt({
-    messageId,
+  //发送GTP数据
+  sendgtp(crt({
+    messageId: messageId.value,
     idx: 999,
-    message
-  })
+    message: usermsg
+  }))
+}
+//发送GTP数据
+const sendgtp = async (m) => {
+  let fetchdata = await gptAPI(m)
+  //数据读流
+  chunk(fetchdata)
+  //全部数据请求完成
+}
+//数据读流
+const chunk = async (fetchdata) => {
+  let res = await fetchdata.body.getReader()
+  while (1) {
+    let { done, value } = await res.read()
+    if (done) {
+      break
+    }
+    // 二进制转文本
+    let texts = decoder.decode(value)
+    try {
+      //处理数据
+      parseStream(texts)
+    } catch (e) {
+    }
+  }
+}
+//每一段流的数据处理
+const parseStream = (texts) => {
+  let {
+    text, messageId: msgId
+  } = JSON.parse(texts)
+  if (flage) {
+    messageId.value = msgId
+    MSGdata.splice(MSGdata.length - 1, 1)
+    MSGdata.push({
+      text: marked(text),
+      Isrobot: true
+    })
+    flage = false
+  }
+  MSGdata[MSGdata.length - 1].text = marked(text)
 }
 //兼容安卓端-保证每次出现新消息在底部
 watch(MSGdata, () => {
-  console.log(main.value.scrollTop);
   main.value.scrollTop = main.value.scrollHeight
 }, {
   deep: true

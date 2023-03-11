@@ -1,29 +1,32 @@
-# GPTweb
+# GPTweb 介绍
+采用第三方接口
+对数据进行可读流获取 （获取效率高！）
+```
+"content-type": 'text/event-stream;charset=utf-8',
+```
+ 后端（v3后已弃用）：https://github.com/longan2244/chatgpt_serve
 
-This template should help get you started developing with Vue 3 in Vite.
+请求需要对明文加密  已调用（src\util\index.js） 的 crt 方法
+## 请求接口实例（v3后已弃用）
+``` js
 
-## Recommended IDE Setup
+let usersmg = {
+  messageId: 'xxxxxxxxxx',
+  idx: 999,
+  message: '你好，帮我写段代码'
+}
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur) + [TypeScript Vue Plugin (Volar)](https://marketplace.visualstudio.com/items?itemName=Vue.vscode-typescript-vue-plugin).
 
-## Customize configuration
 
-See [Vite Configuration Reference](https://vitejs.dev/config/).
-
-## Project Setup
-
-```sh
-npm install
+export const gptAPI = (data) => {
+  return ajax({
+    method: 'post',
+    url: '/api/chatgpt',
+    data:{
+    m: crts(usermsg) //加密密文
+    }
+    maxBodyLength: Infinity,
+  })
+}
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Compile and Minify for Production
-
-```sh
-npm run build
-```

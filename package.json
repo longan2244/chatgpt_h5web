@@ -14,6 +14,7 @@
     "marked": "^4.2.12",
     "pinia": "^2.0.32",
     "postcss-px-to-viewport": "^1.1.1",
+    "qs": "^6.11.1",
     "vue": "^3.2.47",
     "vue-router": "^4.1.6"
   },
