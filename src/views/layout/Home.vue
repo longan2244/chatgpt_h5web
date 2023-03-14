@@ -53,8 +53,9 @@ import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { gptAPI } from '@/api/index.js'
 import { crt } from '@/util/index.js'
 import { marked } from 'marked';
-let decoder = new TextDecoder() //构建文本解析器
+// let decoder = new TextDecoder() //构建文本解析器
 let flage = true //全局flage
+let decoder = new TextDecoder()
 let message = ref('') //自己的对话
 let messageId = ref('') //GPTid
 let MSGdata = reactive([{
@@ -89,41 +90,58 @@ const send = async () => {
 const sendgtp = async (m) => {
   let fetchdata = await gptAPI(m)
   //数据读流
-  chunk(fetchdata)
+  let reader = fetchdata.body.getReader();
+  chunk(reader)
   //全部数据请求完成
 }
 //数据读流
-const chunk = async (fetchdata) => {
-  let res = await fetchdata.body.getReader()
-  while (1) {
-    let { done, value } = await res.read()
+const chunk = async (reader) => {
+  while (true) {
+    const { done, value } = await reader.read();
     if (done) {
-      break
+      console.log('数据请求完成');
+      break;
     }
-    // 二进制转文本
-    let texts = decoder.decode(value)
+    // 数据处理
     try {
-      //处理数据
-      parseStream(texts)
-    } catch (e) {
+      parsedata(parseStream(value))
+    } catch (error) {
+
     }
   }
 }
-//每一段流的数据处理
-const parseStream = (texts) => {
-  let {
-    text, messageId: msgId
-  } = JSON.parse(texts)
+//通过正则表达式-进行数据处理
+const parseStream = (value) => {
+  let results = {}
+  let data = decoder.decode(value);
+  let regex = /"text":"(.*?)","messageId":"(.*?)"/g;
+  let match;
+  while ((match = regex.exec(data)) !== null) {
+    let text = match[1];
+    let messageId = match[2];
+    results.text = text
+    results.messageId = messageId
+  }
+  console.log(results);
+  return results;
+}
+//数据处理
+const parsedata = (data) => {
+  let { text, messageId: msgid } = data
   if (flage) {
-    messageId.value = msgId
+    console.log('进来了+++++++', flage);
+    messageId.value = msgid
     MSGdata.splice(MSGdata.length - 1, 1)
     MSGdata.push({
       text: marked(text),
       Isrobot: true
     })
-    flage = false
+    flage = true
   }
-  MSGdata[MSGdata.length - 1].text = marked(text)
+  MSGdata[MSGdata.length - 1].text = marked(text.replace(/\\n/g, "\n"))
+
+  // MSGdata[MSGdata.length - 1].text = marked('以下是一个简单的 JavaScript 代码示例，用于将页面上的所有段落文本都转换为大写字母：\n\n```javascript\nlet paragraphs = document.getElementsByTagName(\"p\");\n\nfor (let i = 0; i < paragraphs.length; i++) {\n  paragraphs[i].textContent = paragraphs[i].textContent.toUpperCase();\n}\n```\n\n这段代码首先通过 `document.getElementsByTagName()` 方法获取到页面上所有的 `<p>` 标签元素，并将其存储在 `paragraphs` 变量中。然后使用 for 循环遍历每个段落元素，并将其文本内容转换为大写字母，最后将其重新赋值给 `textContent` 属性。')
+  // MSGdata[MSGdata.length - 1].text = marked('以下是一个简单的 JavaScript 代码段，它将创建一个包含 \"Hello, World!\" 文本的新段落，并将其添加到 HTML 页面的主体部分中：\n\n```javascript\n// 获取 body 元素\nconst body = document.querySelector("body");\n\n// 创建新的 p 元素\nconst paragraph = document.createElement("p");\nparagraph.textContent = "Hello, World!"";\n\n// 将 p 元素添加到 body 中\nbody.appendChild(paragraph);\n```\n\n该代码首先使用 `document.querySelector()` 方法获取页面中的 `body` 元素。然后，它使用 `document.createElement()` 方法创建一个新的 `p` 元素，并为其设置文本内容。最后，它使用 `appendChild()` 方法将该元素添加到 `body` 元素中，以便在页面上显示出来。')
 }
 //兼容安卓端-保证每次出现新消息在底部
 watch(MSGdata, () => {
